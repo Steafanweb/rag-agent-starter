@@ -1,19 +1,21 @@
 # RAG Agent Starter
 
-API REST qui permet d'**uploader des documents PDF** et de les **interroger en langage naturel**.  
+API REST qui permet d'**uploader des documents** et de les **interroger en langage naturel**.  
 Chaque réponse cite sa source, son numéro de page et un extrait du passage utilisé.
 
-Construit avec **FastAPI · LlamaIndex · Claude API (Anthropic)**.
+Construit avec **FastAPI · LlamaIndex · Claude API (Anthropic) · PostgreSQL + pgvector**.
+
+> **v2** — L'index est désormais **persistant** : les documents survivent aux redémarrages grâce à pgvector.
 
 ---
 
 ## Ce que ça fait
 
 ```
-POST /upload   →  Indexe un PDF ou fichier texte
-POST /query    →  Pose une question → réponse + sources citées
-GET  /documents →  Liste les documents indexés
-DELETE /documents → Vide l'index
+POST /upload     →  Indexe un PDF ou fichier texte dans pgvector
+POST /query      →  Pose une question → réponse + sources citées
+GET  /documents  →  Liste les documents indexés
+DELETE /documents →  Vide l'index (vecteurs + métadonnées)
 ```
 
 **Exemple :**
@@ -46,31 +48,47 @@ curl -X POST http://localhost:8000/query \
 
 ---
 
-## Installation
+## Démarrage rapide (Docker Compose)
 
 ```bash
 # 1. Cloner le repo
 git clone https://github.com/steafanweb/rag-agent-starter.git
 cd rag-agent-starter
 
-# 2. Créer l'environnement virtuel
-python -m venv venv
-source venv/bin/activate        # Linux / Mac
-venv\Scripts\activate           # Windows
-
-# 3. Installer les dépendances
-pip install -r requirements.txt
-
-# 4. Configurer la clé API
+# 2. Configurer la clé API
 cp .env.example .env
-# Édite .env et mets ta clé Anthropic
+# Édite .env et ajoute ta clé Anthropic :
+#   ANTHROPIC_API_KEY=sk-ant-...
 
-# 5. Lancer l'API
-uvicorn app.main:app --reload
+# 3. Lancer (PostgreSQL + pgvector + API)
+docker compose up --build
 ```
 
 L'API est disponible sur `http://localhost:8000`  
 Documentation interactive : `http://localhost:8000/docs`
+
+---
+
+## Installation locale (sans Docker)
+
+Prérequis : PostgreSQL avec l'extension `pgvector` installée.
+
+```bash
+# 1. Environnement virtuel
+python -m venv venv
+source venv/bin/activate        # Linux / Mac
+venv\Scripts\activate           # Windows
+
+# 2. Dépendances
+pip install -r requirements.txt
+
+# 3. Variables d'environnement
+cp .env.example .env
+# Renseigne ANTHROPIC_API_KEY et les variables POSTGRES_*
+
+# 4. Lancer l'API
+uvicorn app.main:app --reload
+```
 
 ---
 
@@ -80,10 +98,11 @@ Documentation interactive : `http://localhost:8000/docs`
 |---|---|
 | API | FastAPI + Uvicorn |
 | Orchestration RAG | LlamaIndex Core |
-| LLM | Claude Sonnet (Anthropic) |
+| LLM | Claude Sonnet 4.5 (Anthropic) |
 | Embeddings | BAAI/bge-small-en-v1.5 (local, gratuit) |
-| Lecture PDF | pypdf |
-| Stockage index | Mémoire (in-memory) |
+| Stockage vectoriel | PostgreSQL + pgvector |
+| ORM / métadonnées | SQLAlchemy 2.0 |
+| Conteneurisation | Docker + Docker Compose |
 
 > Les embeddings tournent **localement** — aucune clé API supplémentaire n'est requise.  
 > Seule la génération de réponses utilise l'API Anthropic.
@@ -95,13 +114,31 @@ Documentation interactive : `http://localhost:8000/docs`
 ```
 rag-agent-starter/
 ├── app/
-│   ├── main.py        # Endpoints FastAPI
-│   └── rag.py         # Moteur RAG (LlamaIndex)
+│   ├── __init__.py
+│   ├── main.py        # Endpoints FastAPI (lifespan, Depends)
+│   ├── rag.py         # Moteur RAG — PGVectorStore + LlamaIndex
+│   └── database.py    # SQLAlchemy ORM + init pgvector
+├── docker-compose.yml # pgvector/pgvector:pg16 + healthcheck
+├── Dockerfile         # Build image + pré-télécharge le modèle d'embeddings
 ├── requirements.txt
+├── interface.html     # Interface web légère (optionnel)
 ├── .env.example       # Template de configuration
 ├── .gitignore
 └── README.md
 ```
+
+---
+
+## Variables d'environnement
+
+| Variable | Défaut | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | — | **Obligatoire** — clé API Anthropic |
+| `POSTGRES_HOST` | `localhost` | Hôte PostgreSQL |
+| `POSTGRES_PORT` | `5432` | Port PostgreSQL |
+| `POSTGRES_DB` | `ragdb` | Nom de la base |
+| `POSTGRES_USER` | `postgres` | Utilisateur |
+| `POSTGRES_PASSWORD` | `postgres` | Mot de passe |
 
 ---
 
@@ -110,15 +147,6 @@ rag-agent-starter/
 - **PDF** (`.pdf`)
 - **Texte** (`.txt`)
 - **Markdown** (`.md`)
-
-Taille maximale : 10 Mo par fichier.
-
----
-
-## Limitation
-
-L'index est **en mémoire** — redémarrer l'API efface les documents indexés.  
-Pour une version persistante, voir les intégrations LlamaIndex avec PostgreSQL + pgvector.
 
 ---
 
