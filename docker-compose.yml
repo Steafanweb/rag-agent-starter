@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+
+  # ── PostgreSQL + pgvector ──────────────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-ragdb}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # persistance des données sur disque
+    ports:
+      - "5432:5432"                       # accès direct optionnel (dev)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ragdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── API FastAPI ────────────────────────────────────────────────────────────
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      POSTGRES_HOST:     db
+      POSTGRES_PORT:     5432
+      POSTGRES_DB:       ${POSTGRES_DB:-ragdb}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    depends_on:
+      db:
+        condition: service_healthy   # attend que pgvector soit prêt
+
+volumes:
+  pgdata:
+    name: rag_pgdata   # volume nommé → survit à docker-compose down
