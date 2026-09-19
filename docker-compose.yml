@@ -8,14 +8,18 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ragdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_USER: ${POSTGRES_USER:-raguser}
+      # FIX 6 — Le mot de passe ne doit JAMAIS avoir de valeur par défaut.
+      # Si POSTGRES_PASSWORD n'est pas défini dans .env, docker compose s'arrête
+      # avec un message d'erreur explicite plutôt que de démarrer avec un secret prévisible.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env (>= 16 caractères)}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # FIX 5 — Port restreint à l'interface locale ; PostgreSQL n'est pas exposé au réseau.
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ragdb}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-raguser} -d ${POSTGRES_DB:-ragdb}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -27,15 +31,15 @@ services:
     ports:
       - "8000:8000"
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY doit être défini dans .env}
       # FIX 1 — La clé est maintenant transmise au conteneur.
       # Laissez vide pour désactiver l'auth (dev local uniquement).
       API_KEY: ${API_KEY:-}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-ragdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_USER: ${POSTGRES_USER:-raguser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}
     depends_on:
       db:
         condition: service_healthy
