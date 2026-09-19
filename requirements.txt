@@ -4,21 +4,23 @@ python-multipart==0.0.9
 python-dotenv==1.0.1
 pydantic==2.7.4
 
-# LlamaIndex
-llama-index-core==0.10.55
-llama-index-llms-anthropic==0.3.4
-llama-index-embeddings-huggingface==0.2.3
-llama-index-vector-stores-postgres==0.1.12
+# LlamaIndex — versions alignées (toutes compatibles avec core 0.14.x)
+# FIX dépendances : llama-index-core 0.10.55 + anthropic 0.30.0 étaient incompatibles.
+# llama-index-llms-anthropic >=0.10.x requiert core >=0.14.5 et anthropic >=0.75.0.
+llama-index-core==0.14.24
+llama-index-llms-anthropic==0.10.11
+llama-index-embeddings-huggingface==0.8.0
+llama-index-vector-stores-postgres==0.9.0
 
 # Base de données
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.31
 
 # Sécurité & rate limiting (Fix 1 + 2)
-slowapi==0.1.9
+slowapi==0.1.10
 
-# Anthropic
-anthropic==0.30.0
+# Anthropic SDK — doit satisfaire >=0.75.0 (requis par llms-anthropic 0.10.x)
+anthropic==1.7.0
 
 # Lecture de fichiers
 pypdf==4.2.0
