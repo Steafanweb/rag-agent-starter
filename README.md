@@ -1,21 +1,19 @@
 # RAG Agent Starter
 
-API REST qui permet d'**uploader des documents** et de les **interroger en langage naturel**.  
+API REST qui permet d'**uploader des documents PDF** et de les **interroger en langage naturel**.  
 Chaque réponse cite sa source, son numéro de page et un extrait du passage utilisé.
 
-Construit avec **FastAPI · LlamaIndex · Claude API (Anthropic) · PostgreSQL + pgvector**.
-
-> **v2** — L'index est désormais **persistant** : les documents survivent aux redémarrages grâce à pgvector.
+Construit avec **FastAPI · LlamaIndex · Claude API · pgvector**.
 
 ---
 
 ## Ce que ça fait
 
 ```
-POST /upload     →  Indexe un PDF ou fichier texte dans pgvector
-POST /query      →  Pose une question → réponse + sources citées
-GET  /documents  →  Liste les documents indexés
-DELETE /documents →  Vide l'index (vecteurs + métadonnées)
+POST /upload      →  Indexe un PDF ou fichier texte
+POST /query       →  Pose une question → réponse + sources citées
+GET  /documents   →  Liste les documents indexés
+DELETE /documents →  Vide l'index
 ```
 
 **Exemple :**
@@ -34,13 +32,13 @@ curl -X POST http://localhost:8000/query \
 **Réponse :**
 ```json
 {
-  "answer": "Le chiffre d'affaires 2024 est de 4,2 millions de dinars, en hausse de 12% par rapport à 2023.",
+  "answer": "Le chiffre d'affaires 2024 est de 4,2 millions de dinars, en hausse de 12%.",
   "sources": [
     {
       "filename": "rapport_annuel.pdf",
       "page": "8",
       "score": 0.921,
-      "excerpt": "...le CA consolidé atteint 4,2 M TND au 31/12/2024, soit une progression de 12%..."
+      "excerpt": "...le CA consolidé atteint 4,2 M TND au 31/12/2024..."
     }
   ]
 }
@@ -48,47 +46,72 @@ curl -X POST http://localhost:8000/query \
 
 ---
 
-## Démarrage rapide (Docker Compose)
+## Démarrage rapide — Docker Compose ✅ (recommandé)
+
+C'est la méthode la plus simple : une commande lance PostgreSQL/pgvector et l'API ensemble.
 
 ```bash
 # 1. Cloner le repo
 git clone https://github.com/steafanweb/rag-agent-starter.git
 cd rag-agent-starter
 
-# 2. Configurer la clé API
+# 2. Configurer les variables d'environnement
 cp .env.example .env
-# Édite .env et ajoute ta clé Anthropic :
-#   ANTHROPIC_API_KEY=sk-ant-...
+# Édite .env et renseigne ta clé Anthropic (et change POSTGRES_PASSWORD)
 
-# 3. Lancer (PostgreSQL + pgvector + API)
+# 3. Lancer
 docker compose up --build
 ```
 
 L'API est disponible sur `http://localhost:8000`  
 Documentation interactive : `http://localhost:8000/docs`
 
+Pour stopper sans perdre les données :
+```bash
+docker compose stop       # arrête les conteneurs, conserve le volume pgdata
+docker compose down       # arrête ET supprime les conteneurs (volume conservé)
+docker compose down -v    # ⚠️  supprime aussi le volume → perte des données
+```
+
 ---
 
 ## Installation locale (sans Docker)
 
-Prérequis : PostgreSQL avec l'extension `pgvector` installée.
-
 ```bash
-# 1. Environnement virtuel
+# 1. Prérequis : PostgreSQL avec extension pgvector installée
+#    https://github.com/pgvector/pgvector#installation
+
+# 2. Cloner et créer l'environnement virtuel
+git clone https://github.com/steafanweb/rag-agent-starter.git
+cd rag-agent-starter
 python -m venv venv
 source venv/bin/activate        # Linux / Mac
 venv\Scripts\activate           # Windows
 
-# 2. Dépendances
+# 3. Installer les dépendances
 pip install -r requirements.txt
 
-# 3. Variables d'environnement
+# 4. Configurer
 cp .env.example .env
-# Renseigne ANTHROPIC_API_KEY et les variables POSTGRES_*
+# Édite .env avec ta clé Anthropic et les infos PostgreSQL locales
 
-# 4. Lancer l'API
+# 5. Lancer
 uvicorn app.main:app --reload
 ```
+
+---
+
+## Persistance des données
+
+| | v1 (in-memory) | v2 (pgvector) |
+|---|---|---|
+| Stockage | Mémoire RAM | PostgreSQL + pgvector |
+| Survie au redémarrage | ❌ | ✅ |
+| Scalabilité | Mono-instance | Multi-instance possible |
+| Setup | `pip install` | Docker Compose ou PostgreSQL local |
+
+Les embeddings sont stockés dans la table `data_rag_vectors` (gérée par LlamaIndex).  
+Le registre des documents (métadonnées) est dans `rag_documents` (gérée par SQLAlchemy).
 
 ---
 
@@ -98,10 +121,11 @@ uvicorn app.main:app --reload
 |---|---|
 | API | FastAPI + Uvicorn |
 | Orchestration RAG | LlamaIndex Core |
-| LLM | Claude Sonnet 4.5 (Anthropic) |
+| LLM | Claude Sonnet (Anthropic) |
 | Embeddings | BAAI/bge-small-en-v1.5 (local, gratuit) |
-| Stockage vectoriel | PostgreSQL + pgvector |
-| ORM / métadonnées | SQLAlchemy 2.0 |
+| Stockage vecteurs | pgvector (PostgreSQL) |
+| Tracking documents | SQLAlchemy + PostgreSQL |
+| Lecture PDF | pypdf |
 | Conteneurisation | Docker + Docker Compose |
 
 > Les embeddings tournent **localement** — aucune clé API supplémentaire n'est requise.  
@@ -114,31 +138,16 @@ uvicorn app.main:app --reload
 ```
 rag-agent-starter/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py        # Endpoints FastAPI (lifespan, Depends)
-│   ├── rag.py         # Moteur RAG — PGVectorStore + LlamaIndex
-│   └── database.py    # SQLAlchemy ORM + init pgvector
-├── docker-compose.yml # pgvector/pgvector:pg16 + healthcheck
-├── Dockerfile         # Build image + pré-télécharge le modèle d'embeddings
+│   ├── main.py        # Endpoints FastAPI
+│   ├── rag.py         # Moteur RAG (LlamaIndex + pgvector)
+│   └── database.py    # SQLAlchemy — connexion, modèles, init
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
-├── interface.html     # Interface web légère (optionnel)
-├── .env.example       # Template de configuration
+├── .env.example
 ├── .gitignore
 └── README.md
 ```
-
----
-
-## Variables d'environnement
-
-| Variable | Défaut | Description |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | — | **Obligatoire** — clé API Anthropic |
-| `POSTGRES_HOST` | `localhost` | Hôte PostgreSQL |
-| `POSTGRES_PORT` | `5432` | Port PostgreSQL |
-| `POSTGRES_DB` | `ragdb` | Nom de la base |
-| `POSTGRES_USER` | `postgres` | Utilisateur |
-| `POSTGRES_PASSWORD` | `postgres` | Mot de passe |
 
 ---
 
@@ -147,6 +156,16 @@ rag-agent-starter/
 - **PDF** (`.pdf`)
 - **Texte** (`.txt`)
 - **Markdown** (`.md`)
+
+Taille maximale : 10 Mo par fichier.
+
+---
+
+## Extension : index persistant avec pgvector
+
+Pour une version encore plus robuste (multi-instance, backup, index sur disque),
+voir les intégrations LlamaIndex avec `PGVectorStore` + connexion pool :
+https://docs.llamaindex.ai/en/stable/examples/vector_stores/postgres/
 
 ---
 
