@@ -117,7 +117,7 @@ header { background: var(--ink); padding: 16px 32px; display: flex; align-items:
     </div>
   </div>
   <div class="header-right">
-    <!-- FIX 2 — Saisie de la clé API (sessionStorage : disparaît à la fermeture de l'onglet) -->
+    <!-- FIX 2 — Saisie et persistance de la clé API côté interface -->
     <div class="api-key-wrap">
       <span class="api-key-label">🔑 Clé API :</span>
       <input class="api-key-input" id="apiKeyInput" type="password" placeholder="Laissez vide si désactivée" autocomplete="off" onkeydown="if(event.key==='Enter') saveApiKey()">
@@ -181,7 +181,7 @@ header { background: var(--ink); padding: 16px 32px; display: flex; align-items:
 const API = 'http://localhost:8000';
 let pendingFiles = [];
 
-// ── FIX 2 — Clé API en sessionStorage (expire à la fermeture de l'onglet) ──
+// ── FIX 2 — Gestion de la clé API ──────────────────────────────────────────
 function loadApiKey() {
   try { document.getElementById('apiKeyInput').value = sessionStorage.getItem('rag_api_key') || ''; } catch {}
 }
@@ -189,7 +189,7 @@ function loadApiKey() {
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
   try { sessionStorage.setItem('rag_api_key', key); } catch {}
-  toast(key ? '🔑 Clé API enregistrée (session)' : '🔓 Authentification désactivée', 'ok');
+  toast(key ? '🔑 Clé API enregistrée' : '🔓 Authentification désactivée', 'ok');
   checkStatus();
 }
 
@@ -225,7 +225,7 @@ function onFileSelect(files) {
 }
 function renderFileList() {
   const el = document.getElementById('fileList');
-  el.innerHTML = pendingFiles.map((f, i) => `<div class="file-item"><span class="file-icon">📄</span><span class="file-name">${f.name}</span><span style="font-size:10px;color:var(--ink3)">${(f.size/1024).toFixed(0)} Ko</span><button class="file-rm" onclick="removeFile(${i})">×</button></div>`).join('');
+  el.innerHTML = pendingFiles.map((f, i) => `<div class="file-item"><span class="file-icon">📄</span><span class="file-name">${escHtml(f.name)}</span><span style="font-size:10px;color:var(--ink3)">${(f.size/1024).toFixed(0)} Ko</span><button class="file-rm" onclick="removeFile(${i})">×</button></div>`).join('');
   document.getElementById('uploadBtn').disabled = pendingFiles.length === 0;
 }
 function removeFile(i) { pendingFiles.splice(i, 1); renderFileList(); }
@@ -253,7 +253,7 @@ async function loadDocs() {
     const d = await r.json();
     const el = document.getElementById('docList');
     if (!d.documents.length) { el.innerHTML = '<div class="doc-empty">Aucun document pour l\'instant</div>'; }
-    else { el.innerHTML = d.documents.map(doc => `<div class="doc-item"><div class="doc-dot"></div><span class="doc-name">${doc.filename}</span><span class="doc-chunks">${doc.chunks} passage(s)</span></div>`).join(''); }
+    else { el.innerHTML = d.documents.map(doc => `<div class="doc-item"><div class="doc-dot"></div><span class="doc-name">${escHtml(doc.filename)}</span><span class="doc-chunks">${escHtml(String(doc.chunks))} passage(s)</span></div>`).join(''); }
   } catch {}
 }
 
@@ -297,7 +297,7 @@ async function sendQuestion() {
     const d = await r.json(); removeTyping();
     if (!r.ok) addMsg('error', d.detail || 'Erreur API');
     else addMsg('bot', d.answer, d.sources);
-  } catch { removeTyping(); addMsg('error', "Impossible de joindre l'API. Lance bien `docker compose up`."); }
+  } catch { removeTyping(); addMsg('error', 'Impossible de joindre l\'API. Lance bien `docker compose up`.'); }
   document.getElementById('sendBtn').disabled = false;
 }
 
