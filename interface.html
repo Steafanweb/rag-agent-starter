@@ -117,7 +117,7 @@ header { background: var(--ink); padding: 16px 32px; display: flex; align-items:
     </div>
   </div>
   <div class="header-right">
-    <!-- FIX 2 — Saisie et persistance de la clé API côté interface -->
+    <!-- FIX 2 — Saisie de la clé API (sessionStorage : disparaît à la fermeture de l'onglet) -->
     <div class="api-key-wrap">
       <span class="api-key-label">🔑 Clé API :</span>
       <input class="api-key-input" id="apiKeyInput" type="password" placeholder="Laissez vide si désactivée" autocomplete="off" onkeydown="if(event.key==='Enter') saveApiKey()">
@@ -181,21 +181,21 @@ header { background: var(--ink); padding: 16px 32px; display: flex; align-items:
 const API = 'http://localhost:8000';
 let pendingFiles = [];
 
-// ── FIX 2 — Gestion de la clé API ──────────────────────────────────────────
+// ── FIX 2 — Clé API en sessionStorage (expire à la fermeture de l'onglet) ──
 function loadApiKey() {
-  try { document.getElementById('apiKeyInput').value = localStorage.getItem('rag_api_key') || ''; } catch {}
+  try { document.getElementById('apiKeyInput').value = sessionStorage.getItem('rag_api_key') || ''; } catch {}
 }
 
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
-  try { localStorage.setItem('rag_api_key', key); } catch {}
-  toast(key ? '🔑 Clé API enregistrée' : '🔓 Authentification désactivée', 'ok');
+  try { sessionStorage.setItem('rag_api_key', key); } catch {}
+  toast(key ? '🔑 Clé API enregistrée (session)' : '🔓 Authentification désactivée', 'ok');
   checkStatus();
 }
 
 function getHeaders(extra = {}) {
   const h = { ...extra };
-  try { const key = localStorage.getItem('rag_api_key') || ''; if (key) h['X-API-Key'] = key; } catch {}
+  try { const key = sessionStorage.getItem('rag_api_key') || ''; if (key) h['X-API-Key'] = key; } catch {}
   return h;
 }
 
@@ -297,7 +297,7 @@ async function sendQuestion() {
     const d = await r.json(); removeTyping();
     if (!r.ok) addMsg('error', d.detail || 'Erreur API');
     else addMsg('bot', d.answer, d.sources);
-  } catch { removeTyping(); addMsg('error', 'Impossible de joindre l\'API. Lance bien `docker compose up`.'); }
+  } catch { removeTyping(); addMsg('error', "Impossible de joindre l'API. Lance bien `docker compose up`."); }
   document.getElementById('sendBtn').disabled = false;
 }
 
