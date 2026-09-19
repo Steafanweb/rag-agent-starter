@@ -2,9 +2,11 @@ fastapi==0.111.0
 uvicorn[standard]==0.30.1
 python-multipart==0.0.9
 python-dotenv==1.0.1
-# FIX 1 — Pydantic 2.7.x introduit des changements incompatibles avec llama-index-core 0.14.x.
-# Utiliser 2.6.4 (dernière version 2.6 stable, validée avec l'ensemble du stack).
-pydantic==2.6.4
+# FIX 1 — LlamaIndex Core 0.14.x exige pydantic>=2.8.0 ; on borne à <3.0.0 pour éviter les ruptures d'API majeure.
+pydantic>=2.8.0,<3.0.0
+
+
+
 
 # LlamaIndex — versions alignées (toutes compatibles avec core 0.14.x)
 # FIX dépendances : llama-index-core 0.10.55 + anthropic 0.30.0 étaient incompatibles.
@@ -14,20 +16,38 @@ llama-index-llms-anthropic==0.10.11
 llama-index-embeddings-huggingface==0.8.0
 llama-index-vector-stores-postgres==0.9.0
 
+
+
+
 # Base de données
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.31
 
+
+
+
 # Sécurité & rate limiting (Fix 1 + 2)
 slowapi==0.1.10
+
+
+
 
 # Anthropic SDK — doit satisfaire >=0.75.0 (requis par llms-anthropic 0.10.x)
 anthropic==1.7.0
 
+
+
+
 # Lecture de fichiers
 pypdf==4.2.0
+
+
+
 
 # Tests (Fix 7)
 pytest==8.2.2
 pytest-asyncio==0.23.7
 httpx==0.27.0
+
+
+
