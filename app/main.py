@@ -1,5 +1,12 @@
+# FIX 2 — load_dotenv() doit être appelé avant tout import qui lit des variables
+# d'environnement. app.database lit POSTGRES_* au niveau module ; on le charge ici
+# en premier pour que uvicorn app.main:app fonctionne sans export préalable.
+from dotenv import load_dotenv
+load_dotenv()
+
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -40,6 +47,23 @@ def get_rag() -> RAGEngine:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _rag
+
+    # FIX 4 — Vérification de la clé API au démarrage.
+    # En production (ENVIRONMENT=production), l'absence de API_KEY est une erreur fatale.
+    # En développement, on lève un avertissement visible mais on continue.
+    api_key = os.getenv("API_KEY", "").strip()
+    env = os.getenv("ENVIRONMENT", "dev").lower()
+    if not api_key:
+        if env == "production":
+            raise RuntimeError(
+                "API_KEY doit être définie en production. "
+                "Définissez-la dans .env ou en variable d'environnement."
+            )
+        logger.warning(
+            "⚠️  API_KEY non définie — authentification désactivée. "
+            "Acceptable uniquement en développement local."
+        )
+
     for attempt in range(10):
         try:
             init_db()
@@ -66,7 +90,21 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# FIX 8 — CORS restreint aux origines explicitement autorisées.
+# Définissez CORS_ORIGINS dans .env pour la production (ex. : https://mon-app.exemple.com).
+# Valeur par défaut : localhost uniquement (développement).
+_cors_origins = [
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:8000").split(",")
+    if o.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 ALLOWED_TYPES = {"application/pdf", "text/plain", "text/markdown"}
 MAX_MB = 10
