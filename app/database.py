@@ -2,20 +2,30 @@ import logging
 import os
 from datetime import datetime, timezone
 
+from dotenv import load_dotenv
 from sqlalchemy import Column, DateTime, Integer, JSON, String, UniqueConstraint, create_engine, text
+from sqlalchemy.engine import URL as DBURL
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+# FIX 2 — Charger .env avant toute lecture de variable d'environnement.
+# Sans cela, une installation hors Docker sans export préalable ne trouverait
+# pas POSTGRES_HOST, POSTGRES_PASSWORD, etc.
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 # ── Connexion ────────────────────────────────────────────────────────────────
 
-_DB_URL = (
-    f"postgresql+psycopg2://"
-    f"{os.getenv('POSTGRES_USER', 'postgres')}:"
-    f"{os.getenv('POSTGRES_PASSWORD', 'postgres')}@"
-    f"{os.getenv('POSTGRES_HOST', 'localhost')}:"
-    f"{os.getenv('POSTGRES_PORT', '5432')}/"
-    f"{os.getenv('POSTGRES_DB', 'ragdb')}"
+# FIX 9 — URL construite avec URL.create() au lieu de la concaténation.
+# Les caractères spéciaux du mot de passe (ex. @, /, #) sont correctement
+# encodés ; la concaténation brute les cassait silencieusement.
+_DB_URL = DBURL.create(
+    "postgresql+psycopg2",
+    username=os.getenv("POSTGRES_USER", "postgres"),
+    password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+    host=os.getenv("POSTGRES_HOST", "localhost"),
+    port=int(os.getenv("POSTGRES_PORT", "5432")),
+    database=os.getenv("POSTGRES_DB", "ragdb"),
 )
 
 engine = create_engine(_DB_URL, pool_pre_ping=True)
