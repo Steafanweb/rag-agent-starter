@@ -12,10 +12,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pré-télécharge le modèle d'embeddings au build → évite 30–60s de cold start
-# Le modèle est mis en cache dans l'image et réutilisé à chaque démarrage.
+# FIX — modèle multilingue aligné sur app/rag.py (FR · AR · EN, dim 384).
+# ⚠️  Remplace l'ancien bge-small-en-v1.5 (anglais uniquement).
 RUN python -c "\
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding; \
-HuggingFaceEmbedding(model_name='BAAI/bge-small-en-v1.5')"
+HuggingFaceEmbedding(model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 COPY . .
 
