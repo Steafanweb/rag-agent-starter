@@ -32,9 +32,9 @@ services:
       - "8000:8000"
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY doit être défini dans .env}
-      # FIX 1 — La clé est maintenant transmise au conteneur.
-      # Laissez vide pour désactiver l'auth (dev local uniquement).
-      API_KEY: ${API_KEY:-}
+      # FIX 4 — En production, API_KEY est obligatoire et ENVIRONMENT=production active le contrôle au démarrage.
+      API_KEY: ${API_KEY:?API_KEY doit être défini dans .env}
+      ENVIRONMENT: production
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-ragdb}
