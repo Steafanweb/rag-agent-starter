@@ -272,7 +272,7 @@ function addMsg(role, content, sources) {
     div.innerHTML = `<div class="bubble bubble-bot">${escHtml(content)}</div>`;
     if (sources && sources.length) {
       const src = document.createElement('div'); src.className = 'sources';
-      src.innerHTML = sources.map(s => `<div class="source-card"><div class="source-top"><span class="source-file">📄 ${escHtml(s.filename)}</span><span class="source-page">p. ${s.page}</span>${s.score ? `<span class="source-score">score ${s.score}</span>` : ''}</div><div class="source-excerpt">"${escHtml(s.excerpt)}"</div></div>`).join('');
+      src.innerHTML = sources.map(s => `<div class="source-card"><div class="source-top"><span class="source-file">📄 ${escHtml(s.filename)}</span><span class="source-page">p. ${escHtml(String(s.page))}</span>${s.score ? `<span class="source-score">score ${s.score}</span>` : ''}</div><div class="source-excerpt">"${escHtml(s.excerpt)}"</div></div>`).join('');
       div.appendChild(src);
     }
   }
