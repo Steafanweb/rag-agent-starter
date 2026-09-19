@@ -1,0 +1,38 @@
+# Secrets — ne jamais embarquer dans l'image
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+dist/
+build/
+.eggs/
+
+# Environnements virtuels
+.venv
+venv
+env
+
+# Tests & couverture
+.pytest_cache
+.coverage
+htmlcov/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
