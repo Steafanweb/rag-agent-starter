@@ -64,6 +64,16 @@ async def lifespan(app: FastAPI):
             "Acceptable uniquement en développement local."
         )
 
+    # FIX 6 — Vérification de la robustesse du mot de passe PostgreSQL au démarrage.
+    pg_password = os.getenv("POSTGRES_PASSWORD", "")
+    if len(pg_password) < 16:
+        msg = (
+            f"POSTGRES_PASSWORD trop court ({len(pg_password)} car.) — minimum 16 caractères requis."
+        )
+        if env == "production":
+            raise RuntimeError(msg)
+        logger.warning("⚠️  %s Acceptable uniquement en développement local.", msg)
+
     for attempt in range(10):
         try:
             init_db()
