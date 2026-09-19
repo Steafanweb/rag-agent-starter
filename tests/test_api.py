@@ -64,7 +64,13 @@ def client():
         from fastapi.testclient import TestClient
         from app.main import app, get_rag, get_session
 
-        app.dependency_overrides[get_session] = lambda: iter([mock_session])
+        # FIX fixture — get_session est un générateur (yield), l'override doit l'être aussi.
+        # lambda: iter([mock_session]) transmettait l'itérateur lui-même comme "session" ;
+        # FastAPI recevait un objet iter au lieu de mock_session.
+        def _mock_get_session():
+            yield mock_session
+
+        app.dependency_overrides[get_session] = _mock_get_session
         app.dependency_overrides[get_rag] = lambda: mock_rag
 
         with TestClient(app) as c:
